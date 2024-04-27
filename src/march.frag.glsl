@@ -17,6 +17,11 @@ out vec4 fragColor;
 #define SKY_COL vec3(.9,.9,.9)
 #define SUN_COL vec3(1.0,1.0,1.0)
 
+float smin(float a, float b, float k) {
+  float h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
+  return mix(a, b, h) - k*h*(1.0-h);
+}
+
 mat2 Rot(float a) {
     float s = sin(a);
     float c = cos(a);
@@ -32,10 +37,10 @@ float DBox(vec3 p, vec3 o, vec3 r) {
 // Return the distance to the nearest point in the scene
 // from (point)
 float GetDist(vec3 point) {
-    float planeD = point.y;
+    // float planeD = point.y;
 
     // Each row of bodies texture is a sphere position
-    float distance = planeD;
+    float distance = 99999999.;
     ivec2 texSize = textureSize(uBodies, 0);
     vec2 texSizeF = vec2(texSize.x, texSize.y);
     for (int y = 0; y < texSize.y; y++) {
