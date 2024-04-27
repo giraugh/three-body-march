@@ -9,6 +9,7 @@ canvasEl.width = 1000;
 canvasEl.height = 1000;
 
 // Global bodies state
+let time = 0;
 const bodies = Array.from({ length: 5 }, (_, i) => ({
     position: vec3.fromValues(i * 1.5 - 3, 1, 13 + i * .1),
     radius: .4 + i * 0.1,
@@ -40,8 +41,26 @@ function main() {
     // Prepare data
     const sceneData = initSceneData(gl);
 
-    // Draw first frame
+    // Start main loop
+    loop(gl, sceneData, programInfo);
+}
+
+function loop(gl, sceneData, programInfo) {
+    // Update body positions
+    time += 1;
+    for (let body of bodies) {
+        body.position[1] = 3 + Math.sin(time * 0.02 + body.position[0] / 2) * 1
+        body.position[2] = 10 + Math.cos(time * 0.02 + body.position[0] / 2) * 1
+    }
+
+    // Update bodies texture
+    updateBodyPosTexture(gl, sceneData.textures.bodyPosition)
+
+    // Draw frame
     draw(gl, sceneData, programInfo);
+
+    // Repeat on next animation frame
+    requestAnimationFrame(loop.bind(this, gl, sceneData, programInfo))
 }
 
 /**
@@ -131,7 +150,6 @@ function updateBodyPosTexture(gl, texture) {
     const width = pixels.length / height / 4;
     assert(width === Math.floor(width), "Expected width to be an integer value")
     assert(height > 0, "Need at least one body")
-    console.log({ bodies, width, height, pixels })
 
     // Set texture data
     gl.bindTexture(gl.TEXTURE_2D, texture)
