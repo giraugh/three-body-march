@@ -1,0 +1,20 @@
+{
+  "name": "three-body",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "gl-matrix": "^3.4.3",
+    "vite": "^5.2.10"
+  },
+  "devDependencies": {
+    "eslint": "^9.1.1",
+    "prettier": "^3.2.5"
+  }
+}
