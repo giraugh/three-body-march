@@ -37,8 +37,11 @@ float GetDist(vec3 point) {
     // Each row of bodies texture is a sphere position
     float distance = planeD;
     ivec2 texSize = textureSize(uBodies, 0);
+    vec2 texSizeF = vec2(texSize.x, texSize.y);
     for (int y = 0; y < texSize.y; y++) {
-        vec4 texel = texture(uBodies, vec2(0.5, float(y) + .5));
+        vec2 pixCoord = vec2(0., float(y));
+        vec2 texCoord = (pixCoord + 0.5) / texSizeF;
+        vec4 texel = texture(uBodies, texCoord);
         vec3 pos = texel.rgb;
         float radius = texel.a;
         distance = min(distance, length(point - pos) - radius);

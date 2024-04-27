@@ -9,9 +9,9 @@ canvasEl.width = 1000;
 canvasEl.height = 1000;
 
 // Global bodies state
-const bodies = Array.from({ length: 10 }, (_, i) => ({
-    position: vec3.fromValues(i * 0.6 - 5, 1 + i * 0.1, 15),
-    radius: .8 + i * 0.05,
+const bodies = Array.from({ length: 5 }, (_, i) => ({
+    position: vec3.fromValues(i * 1.5 - 3, 1, 13 + i * .1),
+    radius: .4 + i * 0.1,
 }))
 
 /** Start webgl program */
