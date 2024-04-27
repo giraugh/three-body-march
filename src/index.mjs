@@ -1,3 +1,5 @@
+import { vec3 } from 'gl-matrix'
+
 import FRAG_SHADER_SOURCE from './march.frag.glsl?raw'
 import VERT_SHADER_SOURCE from './march.vert.glsl?raw'
 
@@ -6,12 +8,23 @@ const canvasEl = document.querySelector('canvas');
 canvasEl.width = 1000;
 canvasEl.height = 1000;
 
+// Global bodies state
+const bodies = Array.from({ length: 10 }, (_, i) => ({
+    position: vec3.fromValues(i * 0.6 - 5, 1 + i * 0.1, 15),
+    radius: .8 + i * 0.05,
+}))
+
 /** Start webgl program */
 function main() {
     // get webgl context
     const gl = canvasEl.getContext('webgl2');
     if (!gl) return;
 
+    // Enable extensions
+    const ext = gl.getExtension('EXT_color_buffer_float')
+    if (!ext) throw new Error("Couldnt load float texture ext")
+
+    // Load shaders and prepare attribute/uniform locs
     const program = loadProgram(gl);
     const programInfo = {
         program,
@@ -20,48 +33,119 @@ function main() {
         },
         uniformLocations: {
             resolution: gl.getUniformLocation(program, 'uResolution'),
+            bodies: gl.getUniformLocation(program, 'uBodies'),
         },
     };
-    const buffers = initBuffers(gl);
 
-    draw(gl, buffers, programInfo);
+    // Prepare data
+    const sceneData = initSceneData(gl);
+
+    // Draw first frame
+    draw(gl, sceneData, programInfo);
 }
 
 /**
  * Draw the scene to the canvas
  * @param {WebGLRenderingContext} gl
- * @param {ReturnType<typeof initBuffers>} buffers
+ * @param {ReturnType<typeof initSceneData>} sceneData
  */
-function draw(gl, buffers, programInfo) {
+function draw(gl, sceneData, programInfo) {
+    // Clear canvas
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    setPositionAttr(gl, buffers, programInfo);
+    // Set geometry buffer attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, sceneData.buffers.position);
+    gl.vertexAttribPointer(programInfo.attribLocations.position, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(programInfo.attribLocations.position);
 
+    // Enable program
     gl.useProgram(programInfo.program);
 
+    // Activate and set uniform for bodies texture
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, sceneData.textures.bodyPosition);
+    gl.uniform1i(programInfo.uniformLocations.bodies, 0);
+
+    // Set canvas uniforms
     gl.uniform3f(programInfo.uniformLocations.resolution, gl.canvas.width, gl.canvas.height, 0);
 
+    // Draw scene
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 /**
  * @param {WebGLRenderingContext} gl
  */
-function initBuffers(gl) {
+function initSceneData(gl) {
     return {
-        position: initPositionBuffer(gl), // Vertex positions
+        buffers: {
+            position: initPositionBuffer(gl), // Vertex positions
+        },
+        textures: {
+            bodyPosition: initBodyPosTexture(gl), // Body positions
+        }
     };
 }
 
 /**
  * @param {WebGLRenderingContext} gl
- * @param {ReturnType<typeof initBuffers>} buffers
  */
-function setPositionAttr(gl, buffers, programInfo) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    gl.vertexAttribPointer(programInfo.attribLocations.position, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(programInfo.attribLocations.position);
+function initBodyPosTexture(gl) {
+    // Create texture
+    const texture = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+
+    // Populate texture with data
+    updateBodyPosTexture(gl, texture, [])
+
+    // Set filtering
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    return texture
+}
+
+/**
+ * @param {WebGLRenderingContext} gl
+ * @param {ReturnType<typeof WebGLRenderingContext.createTexture>} texture
+ */
+function updateBodyPosTexture(gl, texture) {
+    // Create texture row for each body
+    let pixels = []
+    for (let body of bodies) {
+        pixels = pixels.concat([
+            body.position[0],
+            body.position[1],
+            body.position[2],
+            body.radius,
+        ])
+    }
+
+    // Each set of 4 bytes is one pixel in the row
+    // for that body
+    const height = bodies.length;
+    const width = pixels.length / height / 4;
+    assert(width === Math.floor(width), "Expected width to be an integer value")
+    assert(height > 0, "Need at least one body")
+    console.log({ bodies, width, height, pixels })
+
+    // Set texture data
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA32F,
+        width,
+        height,
+        0, // no border
+        gl.RGBA,
+        gl.FLOAT,
+        new Float32Array(pixels),
+    );
 }
 
 /**
@@ -109,6 +193,16 @@ function loadShader(gl, type, source) {
     }
 
     return shader;
+}
+
+/** Throw an error if the condition is false 
+ * @param {boolean} condition
+ * @param {string} message
+ * */
+function assert(condition, message) {
+    if (!condition) {
+        throw new Error("Assertion error: " + message)
+    }
 }
 
 main();

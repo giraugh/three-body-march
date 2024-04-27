@@ -18,25 +18,33 @@ out vec4 fragColor;
 #define SUN_COL vec3(1.0,1.0,1.0)
 
 mat2 Rot(float a) {
-	float s = sin(a);
-	float c = cos(a);
-	return mat2(
-    	c, -s, s, c
+    float s = sin(a);
+    float c = cos(a);
+    return mat2(
+        c, -s, s, c
     );
 }
 
 float DBox(vec3 p, vec3 o, vec3 r) {
- 	return length(max(abs(p - o) - r, 0.));   
+    return length(max(abs(p - o) - r, 0.));   
 }
 
 // Return the distance to the nearest point in the scene
 // from (point)
 float GetDist(vec3 point) {
     float planeD = point.y;
-    float sphereD = length(point - vec3(0, 1, 6)) - 1.;
-    
-    return sphereD; //min(planeD, sphereD);
 
+    // Each row of bodies texture is a sphere position
+    float distance = planeD;
+    ivec2 texSize = textureSize(uBodies, 0);
+    for (int y = 0; y < texSize.y; y++) {
+        vec4 texel = texture(uBodies, vec2(0.5, float(y) + .5));
+        vec3 pos = texel.rgb;
+        float radius = texel.a;
+        distance = min(distance, length(point - pos) - radius);
+    }
+    
+    return distance;
 }
 
 // March a ray forwards into the scene determined by (GetDist)
@@ -125,7 +133,7 @@ void main() {
     vec2 uv = (gl_FragCoord.xy - .5*uResolution.xy)/uResolution.y;
 
     // Declare camera position in terms of ray origin and direction
-    vec3 rayOrigin = vec3(0, 1, 0);
+    vec3 rayOrigin = vec3(0, 1, -5);
     vec3 rayDirection = normalize(vec3(uv.x, uv.y, 1));
     
     // RayMarch to find point
